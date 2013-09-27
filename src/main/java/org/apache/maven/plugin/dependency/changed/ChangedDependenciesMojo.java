@@ -38,9 +38,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * Gets dependencies list along with latest commit info
+ *
  * @author Artem Zhdanov <azhdanov@griddynamics.com>
  * @since 5/27/13
- * @goal changed
+ * @goal get
  */
 
 public class ChangedDependenciesMojo extends AbstractMojo {
@@ -186,6 +188,11 @@ public class ChangedDependenciesMojo extends AbstractMojo {
             try
             {
                 project = builder.buildFromRepository( node.getArtifact(), remoteRepos, localRepo );
+                if (project.getScm() == null || project.getScm().getConnection() == null) {
+                    writer.println();
+                    return true;
+                }
+
                 scmRepo = scmManager.makeScmRepository( project.getScm().getConnection().replaceAll(" ", "") );
 
                 ScmProviderRepository repository = scmRepo.getProviderRepository();
@@ -331,26 +338,40 @@ public class ChangedDependenciesMojo extends AbstractMojo {
     }
 
     public void execute() throws MojoExecutionException, MojoFailureException {
+        // create if necessary output file
+        File outFile = null;
+        String outFileName = null;
         try {
-            init();
-            DependencyNode rootNode = dependencyGraphBuilder.buildDependencyGraph( project, null );
-
-            String dependencyTreeString = serializeDependencyTree( rootNode );
-
-            File outFile = new File(project.getName().replaceAll("\\.", "_") + FILE_EXT);
+            outFileName = project.getName().replaceAll("\\W", "_") + FILE_EXT;
+            outFile = new File(outFileName);
 
             if (outFile.exists()) {
                 outFile.delete();
             }
             outFile.createNewFile();
 
+        } catch (IOException e) {
+            getLog().error("Error creating output file with name" + outFileName,e);
+            throw new MojoExecutionException( e.getMessage());
+        }
+
+        // build dependency and traverse it to check changed
+        try {
+            init();
+            DependencyNode rootNode = dependencyGraphBuilder.buildDependencyGraph( project, null );
+
+            String dependencyTreeString = serializeDependencyTree( rootNode );
+
             DependencyUtil.write( dependencyTreeString, outFile.getAbsoluteFile(), true, getLog() );
 
         } catch (DependencyGraphBuilderException e) {
+            getLog().error(e);
             throw new MojoExecutionException( e.getMessage());
         } catch (IOException e) {
+            getLog().error(e);
             throw new MojoExecutionException( e.getMessage());
         }
+
     }
 
     private void init() {

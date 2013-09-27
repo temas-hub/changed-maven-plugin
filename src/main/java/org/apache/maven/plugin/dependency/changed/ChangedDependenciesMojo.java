@@ -238,11 +238,9 @@ public class ChangedDependenciesMojo extends AbstractMojo {
                         writer.write(" Revision=");
                         writer.write(changeSet.getRevision());
                         writer.write(" Comment=");
-                        writer.write(changeSet.getComment());
+                        writer.write(changeSet.getComment().replaceAll("\\n", "-"));
                     }
-                    else {
-                        writer.println();
-                    }
+                    writer.println();
                 }
             } catch (ScmException e) {
                 throw new RuntimeException(e);
